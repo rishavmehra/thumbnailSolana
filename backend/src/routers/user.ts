@@ -7,6 +7,8 @@ import { authMiddleware } from "../middleware";
 import { JWT_SECRET } from "..";
 import { createPresignedPost } from '@aws-sdk/s3-presigned-post'
 import { createTaskInput } from "../types";
+import { number } from "zod";
+import { TOTAL_DECIMALS } from "../config";
 
 const DEFAULT_TITLE = "Select the most clickable thumbnail"
 
@@ -20,6 +22,63 @@ const s3Client = new S3Client({
     },
     region: "ap-south-1"
 });
+
+// @ts-ignore
+router.get("/task", authMiddleware, async(req, res)=>{
+    // @ts-ignore
+    const userId: string = req.userId;
+    // @ts-ignore
+    const taskId: string = req.query.taskId;
+
+    const taskDetails = await prismaClient.task.findFirst({
+        where:{
+            user_id:  Number(userId),
+            id: Number(taskId)
+        },
+        include:{
+            options: true
+        }
+    })
+
+    if (!taskDetails){
+        res.status(411).json({
+            message:"you dont have to access this task"
+        })
+    }
+
+    const response = await prismaClient.submission.findMany({
+        where:{
+            task_id: Number(taskId)
+        },
+        include:{
+            option: true
+        }
+    })
+
+    const result: Record<string, {
+        count: number,
+        option: {
+            imageUrl: string
+        }
+    }> = {};
+
+    // @ts-ignore
+    taskDetails.options.forEach(option =>{
+        result[option.id]={
+            count: 0,
+            option: {
+                imageUrl: option.image_url
+            }
+        }
+    })
+
+    response.forEach(r=>{ 
+            result[r.options_id].count++
+    });
+    res.json({
+        result
+    })
+})
 
 // @ts-ignore
 router.post("/task", authMiddleware,  async(req, res)=>{
@@ -38,7 +97,7 @@ router.post("/task", authMiddleware,  async(req, res)=>{
         const response = await tx.task.create({
             data: {
                 title: parseData.data.title ?? DEFAULT_TITLE,
-                amount: "1",
+                amount: 1*TOTAL_DECIMALS,
                 signature: parseData.data.signature,
                 user_id: userId
             }

@@ -23,25 +23,18 @@ model Worker {
   id          Int    @id @default(autoincrement())
   address     String @unique
   submissions Submission[]
-  balance_id     Int
   pending_amount  Int
   locked_amount Int
 }
-
-// model Balance {
-//   id Int  @id @default(autoincrement())
-//   amount Int @default(0)
-//   worker_id   Int
-//   worker      Worker @relation(fields: [worker_id], references: [id])
-// }
 
 model Task {
   id      Int    @id @default(autoincrement())
   title   String @default("Select the most clickable thumbnail")
   options Option[]
   signature String
-  amount  String
+  amount  Int
   user_id Int
+  done    Boolean @default(false)
   user    User @relation(fields: [user_id], references: [id])
   submissions Submission[]
 }
@@ -62,5 +55,6 @@ model Submission {
   option      Option @relation(fields: [options_id],references: [id])
   task_id     Int 
   task        Task @relation(fields: [task_id], references: [id])
-  amount      String
+  amount      Int
+  @@unique([worker_id, task_id])
 }
