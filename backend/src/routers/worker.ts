@@ -13,6 +13,53 @@ const prismaClient = new PrismaClient();
 const router = Router();
 const TOTAL_SUBMISSIONS = 100;
 
+// @ts-ignore
+router.post("/payout", workerMiddleware, async (req, res)=>{
+    // @ts-ignore
+    const userId = req.userId
+    const worker = await prismaClient.worker.findFirst({
+        where: {id: Number(userId)}
+    })
+    if (!worker){
+        return res.status(403).json({
+            message: "User Not Found"
+        })
+    }
+
+    const address = worker.address
+
+    const txnId = "0xdsjk12"
+    await prismaClient.$transaction(async tx => {
+        await tx.worker.update({
+            where: {
+                id: Number(userId)
+            },
+            data:{
+                pending_amount:{
+                    decrement: worker.pending_amount
+                },
+                locked_amount: {
+                increment: worker.pending_amount
+            }
+            }
+        })
+        await tx.payouts.create({
+            data: {
+                user_id: userId,
+                amount: worker.pending_amount,
+                status: "Processing",
+                signature: txnId
+            }
+        })
+    })
+
+    res.json({
+        message: "Processing payout",
+        amount: worker.pending_amount
+    })
+
+})
+
 
 // @ts-ignore
 router.get("/balance", workerMiddleware, async (req,  res)=>{
@@ -31,8 +78,6 @@ router.get("/balance", workerMiddleware, async (req,  res)=>{
     })
 
 })
-
-
 
 // @ts-ignore
 router.post("/submission", workerMiddleware, async(req, res)=>{
@@ -93,7 +138,7 @@ router.get("/nextTask", workerMiddleware, async (req, res)=>{
             message:"No more task left for you to review"
         })
     }else{
-        res.status(402).json({
+        res.status(411).json({
             task
         })
     }

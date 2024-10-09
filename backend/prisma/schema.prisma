@@ -17,6 +17,7 @@ model User {
   id      Int    @id @default(autoincrement())
   address String @unique
   tasks   Task[]
+  payouts  Payouts[]
 }
 
 model Worker {
@@ -57,4 +58,20 @@ model Submission {
   task        Task @relation(fields: [task_id], references: [id])
   amount      Int
   @@unique([worker_id, task_id])
+}
+
+
+model Payouts {
+  id        Int   @id @default(autoincrement())
+  user_id   Int
+  user      User  @relation(fields: [user_id], references: [id])
+  amount    Int
+  signature String
+  status    TxnStatus
+}
+
+enum TxnStatus {
+  Processing
+  Success
+    Failure
 }
